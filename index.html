@@ -180,12 +180,18 @@
     function generatePDF(name, score, status) {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
+
       const logo = new Image();
+      logo.crossOrigin = "anonymous";
+      logo.src = 'https://upload.wikimedia.org/wikipedia/id/5/58/Tut_Wuri_Handayani.png';
+
       const signature = new Image();
+      signature.crossOrigin = "anonymous";
+      signature.src = 'https://via.placeholder.com/100x40?text=TTD';
+
       const qr = new Image();
-      logo.src = 'tutwuri.png';
-      signature.src = 'ABD_FAJAR_.png';
-      qr.src = 'qr.png';
+      qr.crossOrigin = "anonymous";
+      qr.src = 'https://api.qrserver.com/v1/create-qr-code/?data=SimulasiKomputer&size=100x100';
 
       Promise.all([
         new Promise(resolve => { logo.onload = resolve; logo.onerror = resolve; }),
@@ -197,7 +203,7 @@
 
           doc.setFontSize(16);
           doc.text("Lembar Kerja Peserta Didik", 105, 20, null, null, 'center');
-          if (logo.complete) doc.addImage(logo, 'PNG', 15, 10, 25, 25);
+          doc.addImage(logo, 'PNG', 15, 10, 25, 25);
           if (studentPhotoData) doc.addImage(studentPhotoData, 'JPEG', 150, 40, 40, 50);
 
           doc.setFontSize(12);
@@ -211,19 +217,22 @@
           doc.text("- Hardisk", 30, 120);
           doc.text("Simulasi ini menunjukkan bahwa siswa mampu mengenali dan memasang komponen utama komputer dengan benar.", 20, 140, { maxWidth: 170 });
           doc.text("Hasil Simulasi:", 20, 150);
-          doc.addImage(mainboardImg, 'PNG', 20, 155, 160, 70); // <-- Ukuran disesuaikan
+          doc.addImage(mainboardImg, 'PNG', 20, 155, 160, 70);
 
           const today = new Date();
           const formattedDate = today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 
           doc.text(`Malino, ${formattedDate}`, 140, 235);
           doc.text("Guru Mata Pelajaran,", 140, 243);
-          if (signature.complete) doc.addImage(signature, 'PNG', 140, 248, 40, 20);
+          doc.addImage(signature, 'PNG', 140, 248, 40, 20);
           doc.text("ABD. FAJAR LAUDJENG, S.Si", 140, 272);
-          if (qr.complete) doc.addImage(qr, 'PNG', 20, 240, 30, 30);
+          doc.addImage(qr, 'PNG', 20, 240, 30, 30);
 
           doc.save(`LKPD_${name.replace(/\s+/g, "_")}.pdf`);
         });
+      }).catch(err => {
+        alert("Gagal membuat PDF: " + err.message);
+        console.error(err);
       });
     }
   </script>
