@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Simulasi Pemasangan Komponen Komputer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    .draggable { width: 80px; height: 80px; cursor: grab; }
+    .drop-zone {
+      position: absolute;
+      width: 100px;
+      height: 60px;
+      border: 2px dashed rgba(0, 0, 0, 0.2);
+      border-radius: 5px;
+    }
+    .drop-zone .label {
+      position: absolute;
+      top: -24px;
+      left: 0;
+      background-color: rgba(255, 255, 255, 0.95);
+      color: #000;
+      font-size: 12px;
+      font-weight: bold;
+      padding: 4px 8px;
+      border-radius: 6px;
+      opacity: 0;
+      transform: scale(0.8);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      pointer-events: none;
+      z-index: 10;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .drop-zone:hover .label { opacity: 1; transform: scale(1); }
+    .drop-zone.correct { border: 2px solid green; }
+    .drop-zone.wrong { border: 2px solid red; }
+  </style>
+</head>
+<body class="bg-gray-100 p-4">
+  <div class="mb-4">
+    <form id="studentForm" class="flex gap-2 flex-wrap items-center">
+      <input type="text" id="studentName" placeholder="Nama Siswa" class="p-2 border rounded" required>
+      <input type="file" id="studentPhoto" accept="image/*" class="p-2 border rounded">
+      <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Mulai</button>
+      <button type="button" id="resetBtn" class="bg-red-500 text-white px-4 py-2 rounded">Reset</button>
+    </form>
+  </div>
+
+  <div id="mainboard-area" class="relative w-[600px] h-[400px] bg-white border mx-auto shadow-lg rounded">
+    <img src="mainboard.jfif" alt="Mainboard" class="w-full h-full object-contain">
+    <div class="drop-zone" data-type="ram" data-label="RAM Slot" style="top:50px; left:120px;"><div class="label">RAM Slot</div></div>
+    <div class="drop-zone" data-type="cpu" data-label="CPU + Fan" style="top:40px; left:260px;"><div class="label">CPU + Fan</div></div>
+    <div class="drop-zone" data-type="psu" data-label="Power Supply" style="top:250px; left:50px;"><div class="label">Power Supply</div></div>
+    <div class="drop-zone" data-type="hardisk" data-label="Hardisk Slot" style="top:300px; left:400px;"><div class="label">Hardisk Slot</div></div>
+  </div>
+
+  <div class="flex justify-center gap-4 mt-6">
+    <img src="RAM.jfif" class="draggable" draggable="true" data-type="ram">
+    <img src="psu-BTX.jpg" class="draggable" draggable="true" data-type="psu">
+    <img src="FAN.jfif" class="draggable" draggable="true" data-type="cpu">
+    <img src="ssd.jfif" class="draggable" draggable="true" data-type="hardisk">
+  </div>
+
+  <div class="text-center text-red-600 mt-4" id="alertBox"></div>
+
+  <div class="mt-6">
+    <h2 class="text-lg font-semibold mb-2">Hasil Evaluasi</h2>
+    <table class="min-w-full border" id="resultTable">
+      <thead>
+        <tr class="bg-gray-200">
+          <th class="border px-4 py-2">Nama</th>
+          <th class="border px-4 py-2">Nilai</th>
+          <th class="border px-4 py-2">Status</th>
+          <th class="border px-4 py-2">Aksi</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="mt-2 text-right">
+      <button id="clearResults" class="bg-yellow-500 text-white px-4 py-2 rounded">Reset Tabel Evaluasi</button>
+    </div>
+  </div>
+
+  <script>
+    const draggables = document.querySelectorAll('.draggable');
+    const zones = document.querySelectorAll('.drop-zone');
+    const alertBox = document.getElementById('alertBox');
+    const resultTable = document.getElementById('resultTable').querySelector('tbody');
+    const studentForm = document.getElementById('studentForm');
+    const studentNameInput = document.getElementById('studentName');
+    const resetButton = document.getElementById('resetBtn');
+    let currentStudent = "";
+    let studentPhotoData = null;
+
+    studentForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const name = studentNameInput.value.trim();
+      const file = document.getElementById('studentPhoto').files[0];
+      if (!name) return;
+      currentStudent = name;
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = e => studentPhotoData = e.target.result;
+        reader.readAsDataURL(file);
+      } else {
+        studentPhotoData = null;
+      }
+
+      alertBox.textContent = "Silakan mulai memasang komponen!";
+      zones.forEach(zone => {
+        const label = zone.dataset.label || "Slot";
+        zone.classList.remove("correct", "wrong");
+        zone.innerHTML = '<div class="label">' + label + '</div>';
+      });
+    });
+
+    resetButton.addEventListener('click', () => {
+      zones.forEach(zone => {
+        const label = zone.dataset.label || "Slot";
+        zone.classList.remove("correct", "wrong");
+        zone.innerHTML = '<div class="label">' + label + '</div>';
+      });
+      currentStudent = "";
+      studentNameInput.value = "";
+      alertBox.textContent = "Data direset.";
+    });
+
+    draggables.forEach(item => {
+      item.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('type', e.target.dataset.type);
+        e.dataTransfer.setData('html', e.target.outerHTML);
+      });
+    });
+
+    zones.forEach(zone => {
+      zone.addEventListener('dragover', e => e.preventDefault());
+      zone.addEventListener('drop', e => {
+        e.preventDefault();
+        const droppedType = e.dataTransfer.getData('type');
+        const html = e.dataTransfer.getData('html');
+        zone.innerHTML = html;
+        zone.classList.toggle('correct', droppedType === zone.dataset.type);
+        zone.classList.toggle('wrong', droppedType !== zone.dataset.type);
+        alertBox.textContent = droppedType === zone.dataset.type
+          ? `Benar! ${droppedType} dipasang dengan tepat.`
+          : `Keliru! Komponen tidak sesuai slot.`;
+
+        let correct = 0;
+        zones.forEach(z => {
+          const img = z.querySelector('img');
+          if (img && img.dataset.type === z.dataset.type) correct += 1;
+        });
+
+        const score = correct * 25;
+        const status = score >= 75 ? "Lulus" : "Tidak Lulus";
+        const allFilled = Array.from(zones).every(z => z.querySelector('img'));
+
+        if (allFilled && currentStudent !== "") {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class='border px-4 py-2'>${currentStudent}</td>
+            <td class='border px-4 py-2 text-center'>${score}</td>
+            <td class='border px-4 py-2 text-${status === "Lulus" ? "green" : "red"}-600'>${status}</td>
+            <td class='border px-4 py-2 text-center'>
+              <button type="button" class="bg-green-500 text-white px-2 py-1 rounded text-sm" onclick="generatePDF('${currentStudent}', ${score}, '${status}')">Simpan PDF</button>
+            </td>`;
+          resultTable.appendChild(row);
+          alertBox.textContent = `${currentStudent} ${status === "Lulus" ? "berhasil" : "belum"} menyelesaikan tugas. Nilai: ${score}`;
+        }
+      });
+    });
+
+    document.getElementById('clearResults').addEventListener('click', () => {
+      resultTable.innerHTML = "";
+      alertBox.textContent = "Tabel evaluasi telah dikosongkan.";
+    });
+
+    function generatePDF(name, score, status) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const logo = new Image();
+      const signature = new Image();
+      const qr = new Image();
+      logo.src = 'tutwuri.png';
+      signature.src = 'ABD_FAJAR_.png';
+      qr.src = 'qr.png';
+
+      Promise.all([
+        new Promise(resolve => { logo.onload = resolve; logo.onerror = resolve; }),
+        new Promise(resolve => { signature.onload = resolve; signature.onerror = resolve; }),
+        new Promise(resolve => { qr.onload = resolve; qr.onerror = resolve; })
+      ]).then(() => {
+        html2canvas(document.getElementById('mainboard-area')).then(canvas => {
+          const mainboardImg = canvas.toDataURL('image/png');
+
+          doc.setFontSize(16);
+          doc.text("Lembar Kerja Peserta Didik", 105, 20, null, null, 'center');
+          if (logo.complete) doc.addImage(logo, 'PNG', 15, 10, 25, 25);
+          if (studentPhotoData) doc.addImage(studentPhotoData, 'JPEG', 150, 40, 40, 50);
+
+          doc.setFontSize(12);
+          doc.text(`Nama: ${name}`, 20, 45);
+          doc.text(`Nilai: ${score}`, 20, 55);
+          doc.text(`Status: ${status}`, 20, 65);
+          doc.text("Komponen yang berhasil dipasang:", 20, 80);
+          doc.text("- RAM", 30, 90);
+          doc.text("- CPU + FAN", 30, 100);
+          doc.text("- Power Supply", 30, 110);
+          doc.text("- Hardisk", 30, 120);
+          doc.text("Simulasi ini menunjukkan bahwa siswa mampu mengenali dan memasang komponen utama komputer dengan benar.", 20, 140, { maxWidth: 170 });
+          doc.text("Hasil Simulasi:", 20, 150);
+          doc.addImage(mainboardImg, 'PNG', 20, 155, 160, 70); // <-- Ukuran disesuaikan
+
+          const today = new Date();
+          const formattedDate = today.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+          doc.text(`Malino, ${formattedDate}`, 140, 235);
+          doc.text("Guru Mata Pelajaran,", 140, 243);
+          if (signature.complete) doc.addImage(signature, 'PNG', 140, 248, 40, 20);
+          doc.text("ABD. FAJAR LAUDJENG, S.Si", 140, 272);
+          if (qr.complete) doc.addImage(qr, 'PNG', 20, 240, 30, 30);
+
+          doc.save(`LKPD_${name.replace(/\s+/g, "_")}.pdf`);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
